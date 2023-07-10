@@ -1,0 +1,59 @@
+﻿@page "/"
+@using BlazorWasm.DataGrid.Shared.Models;
+@using Microsoft.AspNetCore.Components.QuickGrid
+@inject HttpClient httpClient
+
+
+
+
+<h1>Customer List</h1>
+
+
+<QuickGrid Items="FilteredCustomer" Pagination="pagination">
+    <PropertyColumn Property="c=> c.Id" Title="Id" Sortable="true">
+        <ColumnOptions>
+            <p>Min: <input type="range" @bind="minId" @bind:event="oninput" min="5" max="30" /><span>@minId</span></p>
+            <p>Max: <input type="range" @bind="maxId" @bind:event="oninput" min="5" max="30" /><span>@maxId</span></p>
+        </ColumnOptions>
+    </PropertyColumn>
+    <PropertyColumn Property="c=> c.FirstName" Title="First Name" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="c=> c.LastName" Title="Last Name" Sortable="true"></PropertyColumn>
+    <PropertyColumn Property="c=> c.Location" Sortable="true">
+        <ColumnOptions>
+            <input type="search" @bind="filteredText" @bind:event="oninput" placeholder="Search Location..."/>
+        </ColumnOptions>
+    </PropertyColumn>
+    <TemplateColumn Title="Action">
+        <button class="btn-none bg-white border-0"><span class="oi oi-trash text-danger"></span></button>
+    </TemplateColumn>
+</QuickGrid>
+
+<Paginator State="@pagination"></Paginator>
+
+@code {
+    int minId = 1;
+    int maxId = 30;
+    List<Customer> Customers = new();
+    string? filteredText;
+    IQueryable<Customer> FilteredCustomer
+    {
+        get
+        {
+            var result = Customers.AsQueryable().Where(c=> c.Id >= minId && c.Id <= maxId);
+            if(!string.IsNullOrEmpty(filteredText))
+            {
+                result = result.Where(c => c.FirstName!.Contains(filteredText, StringComparison.CurrentCultureIgnoreCase) ||
+                c.LastName!.Contains(filteredText, StringComparison.CurrentCultureIgnoreCase) || c.Location!.Contains(filteredText, StringComparison.CurrentCultureIgnoreCase));
+            }
+            return result;
+        }
+    }
+    PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await httpClient.GetAsync("api/customer");
+        var response = await result.Content.ReadFromJsonAsync<List<Customer>>();
+        Customers = response!;
+    }
+}
